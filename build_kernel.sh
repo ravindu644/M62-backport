@@ -165,12 +165,22 @@ pack_boot_image(){
         --tags_offset     "${TAGS_OFFSET}"     \
         -o "${BOOT_IMG}" || error "boot.img creation failed"
 
-    local TAR_NAME="${KERNEL_NAME}-OneUI${ONEUI_VERSION}-${MODEL}-${BUILD_DATE}.tar"
+    local ZIP_NAME="${KERNEL_NAME}-OneUI${ONEUI_VERSION}-${MODEL}-${BUILD_DATE}.zip"
+    local STAGING_DIR="${OUTPUT_DIR}/zip_staging"
 
-    log "Packing ${TAR_NAME}..."
-    tar -C "${OUTPUT_DIR}" -cf "${KERNEL_ROOT}/build/${TAR_NAME}" boot.img
+    rm -rf "${STAGING_DIR}"
+    cp -r "${KERNEL_ROOT}/twrp_zip" "${STAGING_DIR}"
+    cp "${BOOT_IMG}" "${STAGING_DIR}/boot.img"
 
-    log "Done: build/${TAR_NAME}"
+    log "Creating ${ZIP_NAME}..."
+    pushd "${STAGING_DIR}" > /dev/null
+    zip -9 -r "${KERNEL_ROOT}/build/${ZIP_NAME}" . \
+        || error "ZIP creation failed"
+    popd > /dev/null
+
+    rm -rf "${STAGING_DIR}"
+
+    log "Done: build/${ZIP_NAME}"
 }
 
 build_kernel

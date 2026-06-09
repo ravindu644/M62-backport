@@ -128,7 +128,7 @@ kernel/configs/android-*.cfg
 # Our dirs
 /out
 /build/out
-/build/*.tar
+/build/*.zip
 
 # Patch files
 *.patch
