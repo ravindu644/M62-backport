@@ -33,7 +33,7 @@ export BUILD_OPTIONS=(
 
 build_kernel(){
     # Make default configuration.
-    make "${BUILD_OPTIONS[@]}" exynos9820_defconfig beyondx.config custom.config
+    make "${BUILD_OPTIONS[@]}" exynos9820_defconfig beyondx.config custom.config droidspaces.config
 
     # Configure the kernel (GUI)
     make "${BUILD_OPTIONS[@]}" menuconfig
