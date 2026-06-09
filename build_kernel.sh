@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Logging functions
-log()   { echo -e "\n[INFO]: $*\n"; }
-error() { echo -e "\n[ERROR]: $*\n" >&2; exit 1; }
+log()   { echo -e "[INFO]: $*"; }
+error() { echo -e "[ERROR]: $*" >&2; exit 1; }
 
 # Model -> device config map
 declare -A MODEL_CONFIGS=(
@@ -14,6 +14,20 @@ declare -A MODEL_CONFIGS=(
     [d1xks]="d1xks.config"             # Note10 5G
     [d2s]="d2s.config"                 # Note10+
     [d2x]="d2x.config"                 # Note10+ 5G
+    [d2xks]="d2x.config"               # Note10+ 5G (Korean)
+)
+
+# Model -> board ID map (for mkbootimg)
+declare -A MODEL_BOARDS=(
+    [beyond0lte]="SRPRI28A016KU"
+    [beyond1lte]="SRPRI28B016KU"
+    [beyond2lte]="SRPRI17C016KU"
+    [beyondx]="SRPSC04B014KU"
+    [d1]="SRPSD26B009KU"
+    [d1xks]="SRPSD23A002KU"
+    [d2s]="SRPSC14B009KU"
+    [d2x]="SRPSC14C009KU"
+    [d2xks]="SRPSD23C002KU"
 )
 
 # Default to beyondx
@@ -41,6 +55,10 @@ log "BUILD STARTED for model: ${MODEL} (${DEVICE_CONFIG})"
 
 # Init submodules
 git submodule update --init --recursive
+
+# Customization
+KERNEL_NAME="ExtremeKernel-KSUNv3.2.0-Droidspaces"
+BUILD_DATE="$(date +"%d-%m-%Y_%H-%M-%S")"
 
 # Export core variables
 export KERNEL_ROOT="$(pwd)"
@@ -78,9 +96,64 @@ build_kernel(){
     # Build the kernel
     make "${BUILD_OPTIONS[@]}" Image || error "Kernel build failed"
 
-    # Copy the built kernel to the build directory
-    cp "${KERNEL_ROOT}/out/arch/arm64/boot/Image" "${KERNEL_ROOT}/build"
-
-    log "BUILD FINISHED..!"
+    log "Kernel build finished"
 }
+
+pack_boot_image(){
+    local OUTPUT_DIR="${KERNEL_ROOT}/build/out/${MODEL}"
+    mkdir -p "${OUTPUT_DIR}"
+
+    local BOARD="${MODEL_BOARDS[$MODEL]}"
+    local KERNEL_IMAGE="${OUTPUT_DIR}/Image"
+    local RAMDISK="${OUTPUT_DIR}/ramdisk.cpio.gz"
+    local BOOT_IMG="${OUTPUT_DIR}/boot.img"
+
+    # boot.img parameters
+    local BASE=0x10000000
+    local CMDLINE='loop.max_part=7'
+    local HASHTYPE=sha1
+    local HEADER_VERSION=1
+    local KERNEL_OFFSET=0x00008000
+    local OS_PATCH_LEVEL=2025-08
+    local OS_VERSION=15.0.0
+    local PAGESIZE=2048
+    local RAMDISK_OFFSET=0xF0000000
+    local SECOND_OFFSET=0xF0000000
+    local TAGS_OFFSET=0x00000100
+
+    cp "${KERNEL_ROOT}/out/arch/arm64/boot/Image" "${KERNEL_IMAGE}"
+
+    log "Building ramdisk..."
+    pushd "${KERNEL_ROOT}/build/ramdisk" > /dev/null
+    find . ! -name . | LC_ALL=C sort | cpio -o -H newc -R root:root | gzip > "${RAMDISK}" \
+        || error "Ramdisk build failed"
+    popd > /dev/null
+
+    log "Creating boot.img..."
+    "${KERNEL_ROOT}/toolchain/mkbootimg" \
+        --base            "${BASE}"            \
+        --board           "${BOARD}"           \
+        --cmdline         "${CMDLINE}"         \
+        --hashtype        "${HASHTYPE}"        \
+        --header_version  "${HEADER_VERSION}"  \
+        --kernel          "${KERNEL_IMAGE}"    \
+        --kernel_offset   "${KERNEL_OFFSET}"   \
+        --os_patch_level  "${OS_PATCH_LEVEL}"  \
+        --os_version      "${OS_VERSION}"      \
+        --pagesize        "${PAGESIZE}"        \
+        --ramdisk         "${RAMDISK}"         \
+        --ramdisk_offset  "${RAMDISK_OFFSET}"  \
+        --second_offset   "${SECOND_OFFSET}"   \
+        --tags_offset     "${TAGS_OFFSET}"     \
+        -o "${BOOT_IMG}" || error "boot.img creation failed"
+
+    local TAR_NAME="${KERNEL_NAME}-${MODEL}-${BUILD_DATE}.tar"
+
+    log "Packing ${TAR_NAME}..."
+    tar -C "${OUTPUT_DIR}" -cf "${KERNEL_ROOT}/build/${TAR_NAME}" boot.img
+
+    log "Done: build/${TAR_NAME}"
+}
+
 build_kernel
+pack_boot_image
