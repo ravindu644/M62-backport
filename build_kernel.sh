@@ -75,7 +75,7 @@ KERNEL_NAME="ExtremeKernel-KSUNv3.2.0-Droidspaces"
 BUILD_DATE="$(date +"%d-%m-%Y_%H-%M-%S")"
 
 # Export core variables
-export KERNEL_ROOT="$(pwd)"
+export KERNEL_ROOT="$(dirname "$(readlink -f "$0")")"
 export ARCH=arm64
 
 # Prepare build environment
@@ -142,10 +142,10 @@ pack_boot_image(){
     cp "${KERNEL_ROOT}/out/arch/arm64/boot/Image" "${KERNEL_IMAGE}"
 
     log "Building ramdisk..."
-    pushd "${KERNEL_ROOT}/build/ramdisk" > /dev/null
+    cd "${KERNEL_ROOT}/build/ramdisk"
     find . ! -name . | LC_ALL=C sort | cpio -o -H newc -R root:root | gzip > "${RAMDISK}" \
         || error "Ramdisk build failed"
-    popd > /dev/null
+    cd "${KERNEL_ROOT}"
 
     log "Creating boot.img..."
     "${KERNEL_ROOT}/toolchain/mkbootimg" \
@@ -173,10 +173,10 @@ pack_boot_image(){
     cp "${BOOT_IMG}" "${STAGING_DIR}/boot.img"
 
     log "Creating ${ZIP_NAME}..."
-    pushd "${STAGING_DIR}" > /dev/null
+    cd "${STAGING_DIR}"
     zip -9 -r "${KERNEL_ROOT}/build/${ZIP_NAME}" . \
         || error "ZIP creation failed"
-    popd > /dev/null
+    cd "${KERNEL_ROOT}"
 
     rm -rf "${STAGING_DIR}"
 
