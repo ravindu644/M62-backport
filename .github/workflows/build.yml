@@ -9,6 +9,7 @@ jobs:
     strategy:
       matrix:
         model: [beyond0lte, beyond1lte, beyond2lte, beyondx, d1, d1xks, d2s, d2x, d2xks]
+        oneui: [6, 7]
       fail-fast: false
 
     steps:
@@ -40,12 +41,12 @@ jobs:
       - name: Build
         run: |
           chmod +x build_kernel.sh
-          ./build_kernel.sh --model ${{ matrix.model }} --no-menuconfig
+          ./build_kernel.sh --model ${{ matrix.model }} --oneui ${{ matrix.oneui }} --no-menuconfig
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-${{ matrix.model }}
+          name: kernel-${{ matrix.model }}-oneui${{ matrix.oneui }}
           path: build/*.tar
 
   release:

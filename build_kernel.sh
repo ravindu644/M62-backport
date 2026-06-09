@@ -33,6 +33,7 @@ declare -A MODEL_BOARDS=(
 # Default to beyondx
 MODEL="beyondx"
 SKIP_MENUCONFIG=false
+ONEUI_VERSION=7
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -45,11 +46,19 @@ while [[ $# -gt 0 ]]; do
             SKIP_MENUCONFIG=true
             shift
             ;;
+        --oneui)
+            [[ -z "$2" ]] && error "--oneui requires a value"
+            ONEUI_VERSION="$2"
+            shift 2
+            ;;
         *)
             error "Unknown argument: $1"
             ;;
     esac
 done
+
+[[ "${ONEUI_VERSION}" != "6" && "${ONEUI_VERSION}" != "7" ]] && \
+    error "Invalid --oneui value '${ONEUI_VERSION}'. Valid values: 6, 7"
 
 if [[ -z "${MODEL_CONFIGS[$MODEL]+_}" ]]; then
     error "Unknown model '$MODEL'. Valid models: ${!MODEL_CONFIGS[*]}"
@@ -95,7 +104,10 @@ export BUILD_OPTIONS=(
 
 build_kernel(){
     # Make default configuration.
-    make "${BUILD_OPTIONS[@]}" exynos9820_defconfig "${DEVICE_CONFIG}" custom.config droidspaces.config
+    local ONEUI6_CONFIG=""
+    [[ "${ONEUI_VERSION}" == "6" ]] && ONEUI6_CONFIG="oneui6.config"
+
+    make "${BUILD_OPTIONS[@]}" exynos9820_defconfig "${DEVICE_CONFIG}" custom.config droidspaces.config ${ONEUI6_CONFIG}
 
     [[ "${SKIP_MENUCONFIG}" == false ]] && make "${BUILD_OPTIONS[@]}" menuconfig
 
@@ -153,7 +165,7 @@ pack_boot_image(){
         --tags_offset     "${TAGS_OFFSET}"     \
         -o "${BOOT_IMG}" || error "boot.img creation failed"
 
-    local TAR_NAME="${KERNEL_NAME}-${MODEL}-${BUILD_DATE}.tar"
+    local TAR_NAME="${KERNEL_NAME}-OneUI${ONEUI_VERSION}-${MODEL}-${BUILD_DATE}.tar"
 
     log "Packing ${TAR_NAME}..."
     tar -C "${OUTPUT_DIR}" -cf "${KERNEL_ROOT}/build/${TAR_NAME}" boot.img
