@@ -1195,6 +1195,7 @@ static int __net_init ip6gre_init_net(struct net *net)
 	if (err)
 		goto err_reg_dev;
 
+	dev_hold(ign->fb_tunnel_dev);
 	rcu_assign_pointer(ign->tunnels_wc[0],
 			   netdev_priv(ign->fb_tunnel_dev));
 	return 0;
