@@ -128,3 +128,8 @@ kernel/configs/android-*.cfg
 # Our dirs
 /out
 /build
+
+# Patch files
+*.patch
+*.rej
+*.orig
