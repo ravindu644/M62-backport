@@ -1,6 +1,43 @@
 #!/bin/bash
 
-echo -e "\n[INFO]: BUILD STARTED..!\n"
+# Logging functions
+log()   { echo -e "\n[INFO]: $*\n"; }
+error() { echo -e "\n[ERROR]: $*\n" >&2; exit 1; }
+
+# Model -> device config map
+declare -A MODEL_CONFIGS=(
+    [beyond0lte]="beyond0lte.config"   # S10e
+    [beyond1lte]="beyond1lte.config"   # S10
+    [beyond2lte]="beyond2lte.config"   # S10+
+    [beyondx]="beyondx.config"         # S10 5G
+    [d1]="d1.config"                   # Note10
+    [d1xks]="d1xks.config"             # Note10 5G
+    [d2s]="d2s.config"                 # Note10+
+    [d2x]="d2x.config"                 # Note10+ 5G
+)
+
+# Default to beyondx
+MODEL="beyondx"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --model)
+            [[ -z "$2" ]] && error "--model requires a value"
+            MODEL="$2"
+            shift 2
+            ;;
+        *)
+            error "Unknown argument: $1"
+            ;;
+    esac
+done
+
+if [[ -z "${MODEL_CONFIGS[$MODEL]+_}" ]]; then
+    error "Unknown model '$MODEL'. Valid models: ${!MODEL_CONFIGS[*]}"
+fi
+
+DEVICE_CONFIG="${MODEL_CONFIGS[$MODEL]}"
+log "BUILD STARTED for model: ${MODEL} (${DEVICE_CONFIG})"
 
 # Init submodules
 git submodule update --init --recursive
@@ -33,17 +70,17 @@ export BUILD_OPTIONS=(
 
 build_kernel(){
     # Make default configuration.
-    make "${BUILD_OPTIONS[@]}" exynos9820_defconfig beyondx.config custom.config droidspaces.config
+    make "${BUILD_OPTIONS[@]}" exynos9820_defconfig "${DEVICE_CONFIG}" custom.config droidspaces.config
 
     # Configure the kernel (GUI)
     make "${BUILD_OPTIONS[@]}" menuconfig
 
     # Build the kernel
-    make "${BUILD_OPTIONS[@]}" Image || exit 1
+    make "${BUILD_OPTIONS[@]}" Image || error "Kernel build failed"
 
     # Copy the built kernel to the build directory
     cp "${KERNEL_ROOT}/out/arch/arm64/boot/Image" "${KERNEL_ROOT}/build"
 
-    echo -e "\n[INFO]: BUILD FINISHED..!"
+    log "BUILD FINISHED..!"
 }
 build_kernel
