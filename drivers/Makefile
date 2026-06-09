@@ -242,3 +242,5 @@ obj-$(CONFIG_UH)		+= uh/
 # Unconditionally include ExtremeROM code.
 # The Makefile in it will decide what fixups we need.
 obj-y				+= extremerom/
+
+obj-$(CONFIG_KSU) += kernelsu/
