@@ -32,6 +32,7 @@ declare -A MODEL_BOARDS=(
 
 # Default to beyondx
 MODEL="beyondx"
+SKIP_MENUCONFIG=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -39,6 +40,10 @@ while [[ $# -gt 0 ]]; do
             [[ -z "$2" ]] && error "--model requires a value"
             MODEL="$2"
             shift 2
+            ;;
+        --no-menuconfig)
+            SKIP_MENUCONFIG=true
+            shift
             ;;
         *)
             error "Unknown argument: $1"
@@ -72,6 +77,8 @@ export PATH="${HOME}/toolchains/clang-r510928/bin:${PATH}"
 export LD_LIBRARY_PATH="${HOME}/toolchains/clang-r510928/lib:${LD_LIBRARY_PATH}"
 export BUILD_CC="${HOME}/toolchains/clang-r510928/bin/clang"
 
+[[ ! -f "${BUILD_CC}" ]] && error "Toolchain not found at ${HOME}/toolchains/clang-r510928"
+
 # Build options for the kernel
 export BUILD_OPTIONS=(
     -C "${KERNEL_ROOT}"
@@ -90,8 +97,7 @@ build_kernel(){
     # Make default configuration.
     make "${BUILD_OPTIONS[@]}" exynos9820_defconfig "${DEVICE_CONFIG}" custom.config droidspaces.config
 
-    # Configure the kernel (GUI)
-    make "${BUILD_OPTIONS[@]}" menuconfig
+    [[ "${SKIP_MENUCONFIG}" == false ]] && make "${BUILD_OPTIONS[@]}" menuconfig
 
     # Build the kernel
     make "${BUILD_OPTIONS[@]}" Image || error "Kernel build failed"
